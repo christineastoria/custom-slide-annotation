@@ -9,10 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "konva": "^9.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "konva": "^9.3.0",
-    "react-konva": "^18.2.10"
+    "react-konva": "^18.2.10",
+    "react-pdf": "^10.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
@@ -22,4 +23,3 @@
     "vite": "^5.0.8"
   }
 }
-
