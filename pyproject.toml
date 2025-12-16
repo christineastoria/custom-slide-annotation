@@ -1,0 +1,21 @@
+[project]
+name = "custom-ui-annotations"
+version = "0.1.0"
+description = "Financial slide generator agent with custom UI annotations"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"  # python-pptx has duplicate ZIP entry bug on 3.13
+dependencies = [
+    "langchain>=1.0.1",
+    "langchain-openai>=1.0.1",
+    "langgraph>=1.0.1",
+    "langsmith>=0.4.37",
+    "pandas>=2.0.0",
+    "python-dotenv>=1.1.1",
+    "python-pptx>=1.0.2",
+    "ipykernel>=7.1.0",
+    "jupyterlab>=4.5.0",
+]
+
+[tool.setuptools]
+packages = []
+
