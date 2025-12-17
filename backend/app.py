@@ -39,6 +39,9 @@ ls_client = Client()
 # Cache for converted PDFs (trace_id -> pdf_bytes)
 pdf_cache: dict[str, bytes] = {}
 
+# Cache for chat-generated PPTX files
+pptx_chat_cache: dict[str, bytes] = {}
+
 
 # ============================================================================
 # PPTX TO PDF CONVERSION
@@ -489,12 +492,32 @@ Data:
                 break
         
         if pptx_bytes:
-            # Save the PPTX to cache so it can be downloaded
+            # Generate a unique ID for this generation
+            import uuid
+            generation_id = str(uuid.uuid4())[:8]
+            
+            # Save PPTX to cache
+            cache_key = f"{request.trace_id}_{generation_id}"
+            pptx_chat_cache[cache_key] = pptx_bytes
+            
+            # Also convert to PDF and cache it
             pdf_bytes = convert_pptx_to_pdf(pptx_bytes)
             if pdf_bytes:
-                pdf_cache[request.trace_id + "_chat"] = pdf_bytes
+                pdf_cache[cache_key] = pdf_bytes
             
-            response_text = f"✅ I've generated a new presentation with {len(pptx_bytes)} bytes!\n\nThe slides have been regenerated based on your request. In a full production system, I would save this and provide a download link. The agent made {len([m for m in result['messages'] if hasattr(m, 'name')])} tool calls to create your slides."
+            # Create download links
+            pptx_download_url = f"/api/chat/download/{cache_key}.pptx"
+            pdf_download_url = f"/api/chat/download/{cache_key}.pdf"
+            
+            response_text = f"""✅ **Slides Generated Successfully!**
+
+I've created a new presentation based on your request.
+
+📥 **Download Links:**
+- [Download PPTX]({pptx_download_url})
+- [Download PDF]({pdf_download_url})
+
+The agent made {len([m for m in result['messages'] if hasattr(m, 'name')])} tool calls to create your slides."""
         else:
             # Agent didn't generate slides - extract its response
             last_message = result["messages"][-1]
@@ -513,6 +536,32 @@ Data:
             response=f"I encountered an error: {str(e)}\n\nPlease try rephrasing your request. Make sure to ask me to create or modify slides based on the data.",
             trace_id=request.trace_id
         )
+
+
+@app.get("/api/chat/download/{cache_key}")
+async def download_chat_generated_file(cache_key: str):
+    """
+    Download a chat-generated presentation (PPTX or PDF).
+    """
+    # Determine file type from extension
+    if cache_key.endswith('.pptx'):
+        actual_key = cache_key[:-5]  # Remove .pptx
+        if actual_key in pptx_chat_cache:
+            return Response(
+                content=pptx_chat_cache[actual_key],
+                media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                headers={"Content-Disposition": f"attachment; filename=slides-{actual_key}.pptx"}
+            )
+    elif cache_key.endswith('.pdf'):
+        actual_key = cache_key[:-4]  # Remove .pdf
+        if actual_key in pdf_cache:
+            return Response(
+                content=pdf_cache[actual_key],
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename=slides-{actual_key}.pdf"}
+            )
+    
+    raise HTTPException(status_code=404, detail="File not found or expired")
 
 
 @app.get("/api/health")

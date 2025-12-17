@@ -117,6 +117,22 @@ All feedback is automatically attached to the source trace via the LangSmith API
 - Feedback appears in the "Feedback" tab of the trace
 - Enables downstream analysis, score distributions, and trend tracking
 
+## Agent Playground
+
+Click **"Open in Chat"** on any trace to enter an interactive playground where you can regenerate slides with different requirements:
+
+- **Conversational Interface**: Chat with the agent to modify presentations
+- **Data Preservation**: Uses the original data from the trace
+- **Live Generation**: Creates new slides based on your instructions
+- **Instant Downloads**: Get PPTX and PDF links immediately after generation
+
+**Example prompts:**
+- "Create a 2-slide version instead of 3"
+- "Make the metrics cards larger and use green colors"
+- "Show only revenue metrics on the first slide"
+
+The playground provides a custom agent experience tailored to your workflow, separate from the standard LangSmith prompt playground.
+
 ## API Endpoints
 
 ### GET /api/traces
@@ -204,6 +220,31 @@ Retrieves all feedback submitted for a specific trace (locally stored).
 ]
 ```
 
+### POST /api/chat
+Interact with the agent to regenerate slides based on trace data.
+
+**Request Body:**
+```json
+{
+  "trace_id": "uuid",
+  "message": "Create a 2-slide version",
+  "history": []  // Previous chat messages
+}
+```
+
+**Response:**
+```json
+{
+  "response": "✅ Slides Generated Successfully!\n\n📥 Download Links:\n- [Download PPTX](/api/chat/download/...)",
+  "trace_id": "uuid"
+}
+```
+
+### GET /api/chat/download/{cache_key}
+Download a chat-generated PPTX or PDF file.
+
+**Response:** `application/vnd.openxmlformats-officedocument.presentationml.presentation` or `application/pdf`
+
 ### GET /api/health
 Health check endpoint for monitoring.
 
@@ -244,6 +285,12 @@ Health check endpoint for monitoring.
 │  ├─ Validate score (1-5) and metadata                           │
 │  ├─ Normalize score to 0-1 for LangSmith                        │
 │  └─ Store locally + sync to LangSmith                           │
+│                                                                  │
+│  Agent Playground                                               │
+│  ├─ Extract original data from trace                            │
+│  ├─ Invoke agent with user's chat instructions                  │
+│  ├─ Cache generated PPTX and converted PDF                      │
+│  └─ Serve download links                                        │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
@@ -270,6 +317,12 @@ Health check endpoint for monitoring.
 │  ├─ Slide-level: Data communication effectiveness (1-5)         │
 │  ├─ Free-form notes for qualitative feedback                    │
 │  └─ One-click submission to LangSmith                           │
+│                                                                  │
+│  Agent Playground (Chat)                                        │
+│  ├─ Conversational UI for slide regeneration                    │
+│  ├─ Preserves original trace data                               │
+│  ├─ Real-time agent interaction                                 │
+│  └─ Download links for generated PPTX/PDF                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -307,9 +360,9 @@ Health check endpoint for monitoring.
 - react-syntax-highlighter: JSON formatting for trace I/O
 
 **Required Dependencies**:
-- Python 3.9+, FastAPI, LangSmith Client, Pydantic
+- Python 3.9+, FastAPI, LangSmith Client, Pydantic, LangChain, pandas
 - Node.js 18+, React, Vite, Chakra UI v3, react-pdf
-- LibreOffice (system-level dependency)
+- LibreOffice (system-level dependency for PDF conversion)
 
 **Key Design Decisions**:
 - PPTX stored as base64 in LangSmith trace outputs

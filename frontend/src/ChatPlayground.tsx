@@ -32,6 +32,17 @@ export default function ChatPlayground({ traceId, traceName, onBack }: ChatPlayg
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to render markdown links and bold text
+  const renderMessageContent = (content: string) => {
+    // Convert markdown to HTML
+    const htmlContent = content
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #6366f1; text-decoration: underline; font-weight: 600;" download>$1</a>')
+      .replace(/\n/g, '<br/>');
+    
+    return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />;
+  };
+
   useEffect(() => {
     // Initialize with trace context
     setMessages([
@@ -167,9 +178,9 @@ export default function ChatPlayground({ traceId, traceName, onBack }: ChatPlayg
                       {new Date(msg.timestamp).toLocaleTimeString()}
                     </Text>
                   </HStack>
-                  <Text fontSize="sm" whiteSpace="pre-wrap">
-                    {msg.content}
-                  </Text>
+                  <Box fontSize="sm">
+                    {renderMessageContent(msg.content)}
+                  </Box>
                 </VStack>
               </Card.Body>
             </Card.Root>
