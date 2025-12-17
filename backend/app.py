@@ -164,6 +164,23 @@ class FeedbackResponse(BaseModel):
     message: str
 
 
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+    timestamp: Optional[str] = None
+
+
+class ChatRequest(BaseModel):
+    trace_id: str
+    message: str
+    history: list[ChatMessage] = []
+
+
+class ChatResponse(BaseModel):
+    response: str
+    trace_id: str
+
+
 # Simple in-memory storage (could be DB later)
 feedback_storage: list[FeedbackSubmission] = []
 
@@ -389,6 +406,113 @@ async def get_feedback(trace_id: str):
     """Get all feedback for a specific trace."""
     trace_feedback = [f for f in feedback_storage if f.trace_id == trace_id]
     return {"feedback": trace_feedback}
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat_with_agent(request: ChatRequest):
+    """
+    Chat with the agent using trace context.
+    """
+    try:
+        # Import the agent from financial_slide_agent
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from financial_slide_agent import slide_agent, builder
+        from langchain_core.messages import HumanMessage, ToolMessage
+        
+        # Get trace data
+        project_name = os.getenv("LANGSMITH_PROJECT", "default")
+        runs = list(ls_client.list_runs(
+            project_name=project_name,
+            trace_id=request.trace_id,
+        ))
+        
+        # Extract the original data from the first run's inputs
+        # The data is embedded in the HumanMessage content
+        original_data_str = None
+        original_prompt = None
+        
+        for run in runs:
+            if run.inputs and 'messages' in run.inputs:
+                messages = run.inputs['messages']
+                if messages and len(messages) > 0:
+                    first_msg = messages[0]
+                    if isinstance(first_msg, dict):
+                        content = first_msg.get('content', '')
+                    else:
+                        content = str(first_msg)
+                    
+                    # The content has format: "{prompt}\n\nData:\n{data}"
+                    if '\n\nData:\n' in content:
+                        parts = content.split('\n\nData:\n', 1)
+                        original_prompt = parts[0]
+                        original_data_str = parts[1]
+                        break
+        
+        if not original_data_str:
+            return ChatResponse(
+                response="I couldn't find the original data from this trace. Please make sure you're opening a trace that contains slide generation data.",
+                trace_id=request.trace_id
+            )
+        
+        # Build the new prompt combining user's request with original data
+        new_prompt = f"""{request.message}
+
+Use the same data as before.
+
+Data:
+{original_data_str}"""
+        
+        # Reset builder
+        builder.reset()
+        
+        # Invoke agent with new prompt
+        from langsmith import uuid7
+        result = slide_agent.invoke(
+            {"messages": [HumanMessage(content=new_prompt)]},
+            config={"configurable": {"thread_id": str(uuid7())}}
+        )
+        
+        # Extract the PPTX bytes from finalize_presentation tool response
+        pptx_bytes = None
+        for message in result["messages"]:
+            if isinstance(message, ToolMessage) and message.name == "finalize_presentation":
+                content = message.content
+                if isinstance(content, bytes):
+                    pptx_bytes = content
+                elif isinstance(content, str) and content.startswith("b'"):
+                    import ast
+                    try:
+                        pptx_bytes = ast.literal_eval(content)
+                    except Exception:
+                        pass
+                break
+        
+        if pptx_bytes:
+            # Save the PPTX to cache so it can be downloaded
+            pdf_bytes = convert_pptx_to_pdf(pptx_bytes)
+            if pdf_bytes:
+                pdf_cache[request.trace_id + "_chat"] = pdf_bytes
+            
+            response_text = f"✅ I've generated a new presentation with {len(pptx_bytes)} bytes!\n\nThe slides have been regenerated based on your request. In a full production system, I would save this and provide a download link. The agent made {len([m for m in result['messages'] if hasattr(m, 'name')])} tool calls to create your slides."
+        else:
+            # Agent didn't generate slides - extract its response
+            last_message = result["messages"][-1]
+            response_text = last_message.content if hasattr(last_message, 'content') else "I completed the request, but didn't generate slides. Please try asking me to create a specific presentation."
+        
+        return ChatResponse(
+            response=response_text,
+            trace_id=request.trace_id
+        )
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"❌ Chat error:\n{error_details}")
+        return ChatResponse(
+            response=f"I encountered an error: {str(e)}\n\nPlease try rephrasing your request. Make sure to ask me to create or modify slides based on the data.",
+            trace_id=request.trace_id
+        )
 
 
 @app.get("/api/health")

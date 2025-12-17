@@ -17,6 +17,7 @@ import SlidePdfViewer from "./SlidePdfViewer";
 import TraceStepsPanel from "./TraceStepsPanel";
 import FeedbackPanel from "./FeedbackPanel";
 import TraceMetadataPanel from "./TraceMetadataPanel";
+import ChatPlayground from "./ChatPlayground";
 
 interface TraceRun {
   run_id: string;
@@ -57,6 +58,7 @@ function App() {
   const [currentSlide, setCurrentSlide] = useState(1);
   const [numPages, setNumPages] = useState(0);
   const [projectName, setProjectName] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"annotation" | "chat">("annotation");
 
   useEffect(() => {
     fetchTraces();
@@ -106,6 +108,25 @@ function App() {
     const date = new Date(isoString);
     return date.toLocaleString();
   };
+
+  const openTraceInChat = () => {
+    setViewMode("chat");
+  };
+
+  const closeChat = () => {
+    setViewMode("annotation");
+  };
+
+  // Render chat view if in chat mode
+  if (viewMode === "chat" && selectedTrace) {
+    return (
+      <ChatPlayground
+        traceId={selectedTrace.trace_id}
+        traceName={selectedTrace.trace_name}
+        onBack={closeChat}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -297,6 +318,7 @@ function App() {
                 projectName={projectName}
                 langsmithUrl={selectedTrace.langsmith_url}
                 createdAt={selectedTrace.created_at}
+                onOpenChat={openTraceInChat}
               />
 
               {/* PDF Viewer Card */}

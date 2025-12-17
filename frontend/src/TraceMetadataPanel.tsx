@@ -1,5 +1,5 @@
 import { Box, HStack, VStack, Text, Badge, Button, createToaster } from "@chakra-ui/react";
-import { HiExternalLink, HiClipboardCopy } from "react-icons/hi";
+import { HiExternalLink, HiClipboardCopy, HiChat } from "react-icons/hi";
 
 const toaster = createToaster({
   placement: "top-end",
@@ -12,6 +12,7 @@ interface TraceMetadataPanelProps {
   projectName: string;
   langsmithUrl?: string;
   createdAt: string;
+  onOpenChat?: () => void;
 }
 
 export default function TraceMetadataPanel({
@@ -20,6 +21,7 @@ export default function TraceMetadataPanel({
   projectName,
   langsmithUrl,
   createdAt,
+  onOpenChat,
 }: TraceMetadataPanelProps) {
   const copyTraceId = () => {
     navigator.clipboard.writeText(traceId);
@@ -51,28 +53,47 @@ export default function TraceMetadataPanel({
             </Text>
           </VStack>
           
-          {langsmithUrl && (
-            <a
-              href={langsmithUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ textDecoration: 'none' }}
-            >
+          <HStack gap={2}>
+            {onOpenChat && (
               <Button
                 size="sm"
-                colorScheme="brand"
-                variant="outline"
+                colorScheme="purple"
+                variant="solid"
                 borderRadius="lg"
                 fontWeight="600"
                 px={3}
-                _hover={{ bg: "brand.50", transform: "translateY(-1px)" }}
+                onClick={onOpenChat}
+                _hover={{ transform: "translateY(-1px)" }}
                 transition="all 0.2s"
               >
-                <HiExternalLink style={{ marginRight: '4px', fontSize: '14px' }} />
-                Open in LangSmith
+                <HiChat style={{ marginRight: '4px', fontSize: '14px' }} />
+                Open in Chat
               </Button>
-            </a>
-          )}
+            )}
+            
+            {langsmithUrl && (
+              <a
+                href={langsmithUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: 'none' }}
+              >
+                <Button
+                  size="sm"
+                  colorScheme="brand"
+                  variant="outline"
+                  borderRadius="lg"
+                  fontWeight="600"
+                  px={3}
+                  _hover={{ bg: "brand.50", transform: "translateY(-1px)" }}
+                  transition="all 0.2s"
+                >
+                  <HiExternalLink style={{ marginRight: '4px', fontSize: '14px' }} />
+                  Open in LangSmith
+                </Button>
+              </a>
+            )}
+          </HStack>
         </HStack>
 
         {/* Metadata Row */}
