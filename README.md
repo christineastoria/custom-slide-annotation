@@ -7,9 +7,8 @@ A human-in-the-loop annotation platform for reviewing and scoring PowerPoint pre
 
 ## Overview
 
-This application demos LangSmith trace monitoring and human evaluation of generated artifacts on a custom frontend. It automatically fetches traces containing PowerPoint outputs, converts them to viewable formats, and provides a structured interface for collecting quantitative scores (1-5) and qualitative feedback that's directly attached to the source traces in LangSmith. 
+This application demos LangSmith trace monitoring and human evaluation of generated artifacts on a custom frontend. It automatically fetches traces containing PowerPoint outputs, converts them to viewable formats, and provides a structured interface for collecting quantitative scores (1-5) and qualitative feedback that's directly attached to the source traces in LangSmith.
 
-/
 
 ## Key Capabilities
 
@@ -19,6 +18,25 @@ This application demos LangSmith trace monitoring and human evaluation of genera
 - **LangSmith Integration**: Feedback automatically attached to traces via LangSmith API for downstream analysis
 - **Trace Visualization**: Deep inspection of agent runs, including inputs/outputs, timing, and execution flow
 - **Artifact Management**: PPTX-to-PDF conversion for reliable cross-platform viewing and downloadable artifacts
+
+## The Agent: Financial Slide Deck Generator
+
+This project includes **`financial_slide_agent.py`**, a LangGraph-based AI agent that generates polished financial PowerPoint presentations from structured data. The agent uses GPT-4o-mini with granular tool control to create professional slides:
+
+**Tools Available to the Agent:**
+- `create_presentation`: Initialize a new PPTX with 16:9 aspect ratio
+- `add_slide`: Insert blank slides with custom layouts
+- `add_title`, `add_text`: Add formatted text with positioning and styling
+- `add_chart`: Create bar, line, or pie charts from data
+- `add_table`: Insert formatted tables with headers and styling
+- `finalize_presentation`: Export the completed PPTX as base64 (stored in LangSmith trace)
+
+**Example Use Cases:** The agent generates three types of financial decks:
+1. **Q4 2024 Business Review**: Revenue, profit, and growth metrics with trend comparisons
+2. **SaaS Investor Update**: MRR, ARR, unit economics, and churn analysis
+3. **E-commerce Category Review**: Top-performing categories with YoY growth
+
+The agent's traces (including the generated PPTX artifacts) are automatically ingested by this annotation platform for human review and scoring.
 
 ## Prerequisites
 
