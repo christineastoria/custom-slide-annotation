@@ -80,6 +80,58 @@ export default function ChatPlayground({ trace, onBack }: ChatPlaygroundProps) {
     });
   };
 
+  // Utility to strip emojis from text
+  const stripEmojis = (text: string): string => {
+    return text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
+  };
+
+  // Parse markdown content and render with clean formatting
+  const renderMessageContent = (content: string) => {
+    let cleaned = stripEmojis(content);
+    cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove bold markdown
+    
+    const parts: React.ReactNode[] = [];
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = linkRegex.exec(cleaned)) !== null) {
+      // Add text before link
+      if (match.index > lastIndex) {
+        parts.push(
+          <Text key={`text-${lastIndex}`} as="span" fontSize="sm" lineHeight="1.6">
+            {cleaned.substring(lastIndex, match.index)}
+          </Text>
+        );
+      }
+      
+      // Add download button for link
+      const linkText = match[1];
+      const linkUrl = match[2];
+      
+      parts.push(
+        <a key={`link-${match.index}`} href={linkUrl} download>
+          <Button size="sm" colorScheme="blue" variant="outline" mx={1} my={1}>
+            {linkText}
+          </Button>
+        </a>
+      );
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add remaining text
+    if (lastIndex < cleaned.length) {
+      parts.push(
+        <Text key={`text-${lastIndex}`} as="span" fontSize="sm" lineHeight="1.6">
+          {cleaned.substring(lastIndex)}
+        </Text>
+      );
+    }
+    
+    return <Box>{parts}</Box>;
+  };
+
   // Parse trace runs into conversational turns
   const parseTraceIntoTurns = (runs: TraceRun[]): ConversationalTurn[] => {
     const turns: ConversationalTurn[] = [];
@@ -482,24 +534,30 @@ export default function ChatPlayground({ trace, onBack }: ChatPlaygroundProps) {
                             {/* AI messages */}
                             {turn.aiMessages?.map((aiMsg, i) => (
                               <Box key={i}>
-                                {aiMsg.content && (
-                                  <Box>
-                                    <Text fontSize="xs" fontWeight="600" color="green.600" mb={2}>
-                                      AI Response:
-                                    </Text>
-                                    <Box
-                                      bg="green.50"
-                                      p={3}
-                                      borderRadius="md"
-                                      borderLeftWidth="3px"
-                                      borderColor="green.300"
-                                    >
+                              {aiMsg.content && (
+                                <Box>
+                                  <Text fontSize="xs" fontWeight="600" color="green.600" mb={2}>
+                                    AI Response:
+                                  </Text>
+                                  <Box
+                                    bg="green.50"
+                                    p={3}
+                                    borderRadius="md"
+                                    borderLeftWidth="3px"
+                                    borderColor="green.300"
+                                  >
+                                    {turn.isFromTrace ? (
                                       <Text fontSize="sm" color="slate.700" lineHeight="1.6">
                                         {aiMsg.content}
                                       </Text>
-                                    </Box>
+                                    ) : (
+                                      <Box color="slate.700">
+                                        {renderMessageContent(aiMsg.content)}
+                                      </Box>
+                                    )}
                                   </Box>
-                                )}
+                                </Box>
+                              )}
                                 {aiMsg.toolCalls && aiMsg.toolCalls.length > 0 && (
                                   <Box>
                                     <Text fontSize="xs" fontWeight="600" color="blue.600" mb={2}>

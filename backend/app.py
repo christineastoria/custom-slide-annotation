@@ -469,11 +469,20 @@ Data:
         # Reset builder
         builder.reset()
         
-        # Invoke agent with new prompt
+        # Invoke agent with new prompt and threading config
         from langsmith import uuid7
         result = slide_agent.invoke(
             {"messages": [HumanMessage(content=new_prompt)]},
-            config={"configurable": {"thread_id": str(uuid7())}}
+            config={
+                "configurable": {"thread_id": str(uuid7())},
+                "metadata": {
+                    "thread_id": request.trace_id,  # Links to original trace
+                    "conversation_id": request.trace_id,
+                    "is_continuation": True,
+                    "original_trace": request.trace_id
+                },
+                "tags": ["chat_continuation", f"original_trace_{request.trace_id}"]
+            }
         )
         
         # Extract the PPTX bytes from finalize_presentation tool response
